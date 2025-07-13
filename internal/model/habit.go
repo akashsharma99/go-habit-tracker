@@ -2,37 +2,47 @@ package model
 
 import "time"
 
+type Completion struct {
+	Date      string `json:"date"`
+	Completed bool   `json:"completed"`
+}
+
 type Habit struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Completions map[string]bool `json:"completions"` // date -> completed
-	CreatedAt   time.Time       `json:"created_at"`
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Completions []Completion `json:"completions"`
+	CreatedAt   time.Time    `json:"created_at"`
 }
 
 func NewHabit(name string) *Habit {
 	return &Habit{
 		ID:          time.Now().Format("20060102150405"),
 		Name:        name,
-		Completions: make(map[string]bool),
+		Completions: []Completion{},
 		CreatedAt:   time.Now(),
 	}
 }
 
 func (h *Habit) ToggleToday() {
 	today := time.Now().Format("2006-01-02")
-	if h.Completions == nil {
-		h.Completions = make(map[string]bool)
+	for i, c := range h.Completions {
+		if c.Date == today {
+			h.Completions[i].Completed = !c.Completed
+			return
+		}
 	}
-	h.Completions[today] = !h.Completions[today]
+	// If not found, add new completion for today
+	h.Completions = append(h.Completions, Completion{Date: today, Completed: true})
 }
 
 func (h *Habit) IsCompletedToday() bool {
 	today := time.Now().Format("2006-01-02")
-	if h.Completions == nil {
-		h.Completions = make(map[string]bool)
-		return false
+	for _, c := range h.Completions {
+		if c.Date == today {
+			return c.Completed
+		}
 	}
-	return h.Completions[today]
+	return false
 }
 
 func (h *Habit) GetCompletionRate() float64 {
@@ -40,8 +50,8 @@ func (h *Habit) GetCompletionRate() float64 {
 		return 0.0
 	}
 	completed := 0
-	for _, isCompleted := range h.Completions {
-		if isCompleted {
+	for _, c := range h.Completions {
+		if c.Completed {
 			completed++
 		}
 	}
