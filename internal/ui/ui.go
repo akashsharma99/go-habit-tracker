@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/google/uuid"
 )
 
@@ -97,7 +98,7 @@ func (m TuiModel) View() string {
 		)
 	}
 
-	s := "Habit Tracker\n\n"
+	s := TitleStyle.Render("Habit Tracker") + "\n\n"
 	for i, habit := range m.habits {
 		cursor := " "
 		if m.cursor == i {
@@ -109,8 +110,15 @@ func (m TuiModel) View() string {
 			checked = "✓"
 		}
 		completionRate := habit.GetCompletionRate()
-		s += fmt.Sprintf("%s [%s] %s (%.2f%%)\n", cursor, checked, habit.Name, completionRate)
+
+		line := fmt.Sprintf("%s [%s] %s (%.2f%%)", cursor, checked, habit.Name, completionRate)
+		if m.cursor == i {
+			s += SelectedListItemStyle.Render(line)
+		} else {
+			s += ListItemStyle.Render(line)
+		}
+		s += "\n"
 	}
-	s += "\nUse UP/DOWN arrow keys to navigate, and 'space' or 'enter' to toggle habit status. 'a' to add a new habit. 'q' to exit.\n"
+	s += HelpStyle.Render("\nUse UP/DOWN arrow keys to navigate, and space or enter to toggle habit status. 'a' to add a new habit. q to exit.\n")
 	return s
 }
