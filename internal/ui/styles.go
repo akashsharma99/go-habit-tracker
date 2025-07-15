@@ -19,4 +19,10 @@ var (
 
 	HelpStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#626262"))
+
+	TextInputPromptStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#7D56F4"))
+
+	TextInputStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FAFAFA"))
 )

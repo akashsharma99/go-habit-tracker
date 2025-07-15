@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"habit-tracker/internal/model"
@@ -24,7 +26,6 @@ type TuiModel struct {
 
 func InitializeModel(s *storage.Storage) TuiModel {
 	input := textinput.New()
-	input.Placeholder = "New Habit"
 	input.Focus()
 
 	return TuiModel{
@@ -47,13 +48,17 @@ func (m TuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "enter":
-				newHabit := &model.Habit{
-					ID:        uuid.New().String(),
-					Name:      m.input.Value(),
-					CreatedAt: time.Now(),
+				inputStr := m.input.Value()
+				trimmed := strings.TrimSpace(inputStr)
+				if len(trimmed) > 0 {
+					newHabit := &model.Habit{
+						ID:        uuid.New().String(),
+						Name:      trimmed,
+						CreatedAt: time.Now(),
+					}
+					m.storage.AddHabit(newHabit)
+					m.habits = m.storage.GetHabits()
 				}
-				m.storage.AddHabit(newHabit)
-				m.habits = m.storage.GetHabits()
 				m.addingHabit = false
 				m.input.Reset()
 			case "esc":
@@ -73,6 +78,18 @@ func (m TuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "a":
 			m.addingHabit = true
 			return m, nil
+		case "d":
+			if len(m.habits) > 0 {
+				habitToDelete := m.habits[m.cursor]
+				if err := m.storage.DeleteHabit(habitToDelete.ID); err != nil {
+					log.Printf("Error deleting habit: %v\n", err)
+				} else {
+					m.habits = m.storage.GetHabits()
+					if m.cursor >= len(m.habits) {
+						m.cursor = len(m.habits) - 1
+					}
+				}
+			}
 		case "up":
 			if m.cursor > 0 {
 				m.cursor--
@@ -94,7 +111,7 @@ func (m TuiModel) View() string {
 	if m.addingHabit {
 		return fmt.Sprintf(
 			"Enter new habit name:\n%s\n\n(press enter to save, esc to cancel)",
-			m.input.View(),
+			TextInputPromptStyle.Render(m.input.View()),
 		)
 	}
 
@@ -119,6 +136,6 @@ func (m TuiModel) View() string {
 		}
 		s += "\n"
 	}
-	s += HelpStyle.Render("\nUse UP/DOWN arrow keys to navigate, and space or enter to toggle habit status. 'a' to add a new habit. q to exit.\n")
+	s += HelpStyle.Render("\nUse UP/DOWN arrow keys to navigate.\nspace or enter to toggle habit status.\n'a' to add a new habit.\n'd' to delete the selected habit.\n'q' to exit.\n")
 	return s
 }
