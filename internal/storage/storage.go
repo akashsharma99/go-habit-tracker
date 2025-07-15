@@ -142,8 +142,10 @@ func (s *Storage) GetHabits() []*model.Habit {
 			Date:      completedDate,
 			Completed: isCompleted,
 		})
-
-		log.Println("Loaded habit:", habitMap[habitID].Name, "with completions:\n", habitMap[habitID].Completions)
+	}
+	// log the loaded habits for debugging
+	for _, habit := range habitMap {
+		log.Printf("Loaded habit: %s with completions: %v", habit.Name, habit.Completions)
 	}
 
 	return habits
