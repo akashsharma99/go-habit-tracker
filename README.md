@@ -2,6 +2,8 @@
 
 A simple terminal-based habit tracker built in Go using the Bubble Tea TUI framework. This app helps you build and maintain good habits by tracking your daily progress in a clean, interactive terminal UI.
 
+![Screenshot](screenshot.png)
+
 ## Features
 - Add new habits
 - Mark habits as completed for today
