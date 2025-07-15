@@ -7,15 +7,15 @@ import (
 )
 
 type Completion struct {
-	Date      string `json:"date"`
-	Completed bool   `json:"completed"`
+	Date      string
+	Completed bool
 }
 
 type Habit struct {
-	ID          string       `json:"id"`
-	Name        string       `json:"name"`
-	Completions []Completion `json:"completions"`
-	CreatedAt   time.Time    `json:"created_at"`
+	ID          string
+	Name        string
+	Completions []Completion
+	CreatedAt   time.Time
 }
 
 func NewHabit(name string) *Habit {
