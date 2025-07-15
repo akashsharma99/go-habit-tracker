@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"habit-tracker/internal/storage"
 	"habit-tracker/internal/ui"
@@ -11,14 +12,20 @@ import (
 )
 
 func main() {
-	if len(os.Getenv("DEBUG")) > 0 {
-		f, err := tea.LogToFile("debug.log", "debug")
-		if err != nil {
-			fmt.Printf("Error creating log file: %v\n", err)
-			os.Exit(1)
-		}
-		defer f.Close()
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("Error getting home directory: %v\n", err)
+		os.Exit(1)
 	}
+
+	dataDir := filepath.Join(homeDir, ".habit-tracker/app.log")
+	f, err := tea.LogToFile(dataDir, "info")
+	if err != nil {
+		fmt.Printf("Error creating log file: %v\n", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+
 	s, err := storage.NewStorage()
 	if err != nil {
 		fmt.Printf("Error initializing storage: %v\n", err)
