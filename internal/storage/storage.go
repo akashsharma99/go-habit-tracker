@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -42,7 +43,7 @@ func NewStorage() (*Storage, error) {
 
 		CREATE TABLE IF NOT EXISTS completions (
 			habit_id TEXT,
-			completed_date DATE,
+			completed_date TEXT,
 			is_completed BOOLEAN,
 			PRIMARY KEY (habit_id, completed_date),
 			FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
@@ -67,6 +68,14 @@ func (s *Storage) AddHabit(habit *model.Habit) error {
 		INSERT INTO habits (id, name, created_at)
 		VALUES (?, ?, ?)
 	`, habit.ID, habit.Name, habit.CreatedAt)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO completions (habit_id, completed_date, is_completed)
+		VALUES (?, ?, ?)
+	`, habit.ID, time.Now().Format("2006-01-02"), false)
 	if err != nil {
 		return err
 	}
@@ -96,96 +105,48 @@ func (s *Storage) DeleteHabit(id string) error {
 }
 
 func (s *Storage) GetHabits() []*model.Habit {
+	habitMap := make(map[string]*model.Habit)
 	habits := make([]*model.Habit, 0)
+
 	rows, err := s.db.Query(`
-		SELECT h.id, h.name, h.created_at,
-			c.completed_date, CASE WHEN c.is_completed = 1 THEN 1 ELSE 0 END as is_completed
+		SELECT h.id, h.name, h.created_at, c.completed_date, c.is_completed
 		FROM habits h
 		LEFT JOIN completions c ON h.id = c.habit_id
-		ORDER BY h.created_at, c.completed_date
+		ORDER BY h.created_at DESC
 	`)
 	if err != nil {
 		return habits
 	}
 	defer rows.Close()
 
-	habitMap := make(map[string]*model.Habit)
 	for rows.Next() {
-		var id, name string
+		var habitID, name, completedDate string
 		var createdAt time.Time
-		var completedDate sql.NullString
-		var isCompleted sql.NullBool
+		var isCompleted bool
 
-		err := rows.Scan(&id, &name, &createdAt, &completedDate, &isCompleted)
-		if err != nil {
+		if err := rows.Scan(&habitID, &name, &createdAt, &completedDate, &isCompleted); err != nil {
 			continue
 		}
 
-		habit, exists := habitMap[id]
-		if !exists {
-			habit = &model.Habit{
-				ID:          id,
+		if _, ok := habitMap[habitID]; !ok {
+			habitMap[habitID] = &model.Habit{
+				ID:          habitID,
 				Name:        name,
 				CreatedAt:   createdAt,
 				Completions: []model.Completion{},
 			}
-			habitMap[id] = habit
-			habits = append(habits, habit)
+			habits = append(habits, habitMap[habitID])
 		}
 
-		if completedDate.Valid && isCompleted.Valid {
-			if date, err := time.Parse("2006-01-02", completedDate.String); err == nil {
-				habit.Completions = append(habit.Completions, model.Completion{
-					Date:      date.Format("2006-01-02"),
-					Completed: isCompleted.Bool,
-				})
-			}
-		}
+		habitMap[habitID].Completions = append(habitMap[habitID].Completions, model.Completion{
+			Date:      completedDate,
+			Completed: isCompleted,
+		})
+
+		log.Println("Loaded habit:", habitMap[habitID].Name, "with completions:\n", habitMap[habitID].Completions)
 	}
 
 	return habits
-}
-
-func (s *Storage) UpdateHabit(habit *model.Habit) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	// Update habit name
-	_, err = tx.Exec(`
-		UPDATE habits 
-		SET name = ?
-		WHERE id = ?
-	`, habit.Name, habit.ID)
-	if err != nil {
-		return err
-	}
-
-	// Delete old completions
-	_, err = tx.Exec("DELETE FROM completions WHERE habit_id = ?", habit.ID)
-	if err != nil {
-		return err
-	}
-
-	// Insert new completions
-	for _, c := range habit.Completions {
-		if date, err := time.Parse("2006-01-02", c.Date); err == nil {
-			_, err = tx.Exec(`
-				INSERT INTO completions (habit_id, completed_date, is_completed)
-				VALUES (?, ?, ?)
-			`, habit.ID, date.Format("2006-01-02"), c.Completed)
-			if err != nil {
-				return err
-			}
-		}
-		if err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit()
 }
 
 func (s *Storage) UpdateCompletion(habitID string, date string, completed bool) error {

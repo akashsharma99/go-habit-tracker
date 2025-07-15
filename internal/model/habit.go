@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Completion struct {
 	Date      string `json:"date"`
@@ -16,7 +20,7 @@ type Habit struct {
 
 func NewHabit(name string) *Habit {
 	return &Habit{
-		ID:          time.Now().Format("20060102150405"),
+		ID:          uuid.New().String(),
 		Name:        name,
 		Completions: []Completion{},
 		CreatedAt:   time.Now(),
